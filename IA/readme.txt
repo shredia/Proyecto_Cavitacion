@@ -1,7 +1,11 @@
 se creó la carpeta donde trabajar IA
 
-<<<<<<< HEAD
-el que lee es gay
-=======
-hola mundo
->>>>>>> 790aff3c95ccd8b85cdb7fd46a71730b8c941a89
+
+medir en el celular
+la aplicación que solicite datos y guarde en csv
+aplicarle fft a los csv
+aplicar IA a csv filtrado
+desde la IA a la aplicación mandarle un "tá cavitando" o "no tá cavitando"
+de la aplicación mandar al pc un tá cavitando o no
+mostrar si está cavitando o no en la aplicación
+
