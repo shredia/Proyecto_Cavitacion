@@ -36,6 +36,7 @@ interface ServerStateListener
     fun onServerStopped()
     fun onServerError(ex: Exception?)
     fun onServerAlreadyRunning(serverInfo: ServerInfo)
+    fun UdpAudioStreamer()
 }
 
 enum class ServiceRegistrationState{

@@ -3,8 +3,6 @@ package github.umer0586.sensorserver.fragments
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
-import android.graphics.drawable.Drawable
-import android.graphics.drawable.Icon
 import android.net.nsd.NsdServiceInfo
 import android.net.wifi.WifiManager
 import android.os.Build
@@ -13,6 +11,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
@@ -24,11 +23,12 @@ import com.google.android.material.snackbar.Snackbar
 import com.permissionx.guolindev.PermissionX
 import github.umer0586.sensorserver.R
 import github.umer0586.sensorserver.databinding.FragmentServerBinding
-import github.umer0586.sensorserver.service.WebsocketService
-import github.umer0586.sensorserver.service.WebsocketService.LocalBinder
 import github.umer0586.sensorserver.service.ServerStateListener
 import github.umer0586.sensorserver.service.ServiceBindHelper
 import github.umer0586.sensorserver.service.ServiceRegistrationState
+import github.umer0586.sensorserver.service.UdpAudioService
+import github.umer0586.sensorserver.service.WebsocketService
+import github.umer0586.sensorserver.service.WebsocketService.LocalBinder
 import github.umer0586.sensorserver.setting.AppSettings
 import github.umer0586.sensorserver.websocketserver.ServerInfo
 import kotlinx.coroutines.Dispatchers
@@ -37,7 +37,13 @@ import kotlinx.coroutines.launch
 import java.net.BindException
 import java.net.UnknownHostException
 
-class ServerFragment : Fragment(), ServerStateListener
+
+interface UdpAudioStreamer {
+    fun startAudioStreaming(ip: String, port: Int)
+    fun stopAudioStreaming()
+}
+
+class ServerFragment : Fragment(), ServerStateListener,  UdpAudioStreamer
 {
 
     private var websocketService: WebsocketService? = null
@@ -52,6 +58,18 @@ class ServerFragment : Fragment(), ServerStateListener
     // onDestroyView.
     private val binding get() = _binding!!
 
+    override fun startAudioStreaming(ip: String, port: Int) {
+        val intent = Intent(requireContext(), UdpAudioService::class.java).apply {
+            putExtra("IP_ADDRESS", ip)
+            putExtra("PORT", port)
+        }
+        requireContext().startService(intent)  // Inicia el servicio
+    }
+
+    override fun stopAudioStreaming() {
+        val intent = Intent(requireContext(), UdpAudioService::class.java)
+        requireContext().stopService(intent)  // Detiene el servicio
+    }
 
     override fun onCreateView(inflater: LayoutInflater, container: ViewGroup?, savedInstanceState: Bundle?): View?
     {
@@ -64,7 +82,7 @@ class ServerFragment : Fragment(), ServerStateListener
     {
         super.onViewCreated(view, savedInstanceState)
         Log.i(TAG, "onViewCreated: ")
-
+        val buttonAudio = view.findViewById<View>(R.id.buttonAudio)
         bottomSheetDialog = BottomSheetDialog(requireContext())
         bottomSheetContent = layoutInflater.inflate(R.layout.bottom_sheet_dialog, null)
         bottomSheetDialog.setContentView(bottomSheetContent)
@@ -99,9 +117,38 @@ class ServerFragment : Fragment(), ServerStateListener
             else if (v.tag == "started")
                 stopServer()
         }
+        binding.buttonAudio.setOnClickListener { v ->
+            if (v is Button) { // Check if v is a Button
+                val isStarted = v.tag == "started"
+                val ipAddress = binding.direccionIp.text.toString()
 
+                if (isStarted) {
+                    v.setText(R.string.start_server) // Change to "START"
+                    v.tag = "stopped"
+                    stopUdpAudioService()
+                } else {
+                    v.setText(R.string.stop_server) // Change to "STOP"
+                    v.tag = "started"
+                    startUdpAudioService(ipAddress) // Pass IP address
+                }
+            }
+        }
 
     }
+
+
+    private fun startUdpAudioService(ipAddress: String) {
+        val intent = Intent(requireContext(), UdpAudioService::class.java)
+        intent.putExtra("IP_ADDRESS", ipAddress) // Pass IP address
+        intent.putExtra("PORT", 5000) // Example port
+        requireContext().startService(intent) // Start the service in background
+    }
+
+    private fun stopUdpAudioService() {
+        val intent = Intent(requireContext(), UdpAudioService::class.java)
+        requireContext().stopService(intent) // Stop the service
+    }
+
 
     private fun showServerAddress(address: String)
     {
@@ -229,6 +276,10 @@ class ServerFragment : Fragment(), ServerStateListener
             binding.startButton.tag = "started"
             binding.startButton.text = "STOP"
         }
+    }
+
+    override fun UdpAudioStreamer() {
+        TODO("Not yet implemented")
     }
 
     private fun showPulseAnimation()

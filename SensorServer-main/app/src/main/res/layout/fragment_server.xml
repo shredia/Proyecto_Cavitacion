@@ -13,6 +13,19 @@
     android:animateLayoutChanges="true"
     android:orientation="vertical">
 
+    <TextView
+        android:id="@+id/server_address"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="center"
+        android:paddingHorizontal="40dp"
+        android:paddingVertical="15dp"
+        android:scrollbars="horizontal"
+        android:singleLine="true"
+        android:text="https://192.168.102.112:8080"
+        android:textAlignment="center"
+        android:textSize="18dp" />
+
     <androidx.cardview.widget.CardView
         android:id="@+id/card_view"
         android:layout_width="wrap_content"
@@ -21,20 +34,6 @@
         app:cardCornerRadius="30dp"
         app:cardElevation="7dp"
         >
-
-
-            <TextView
-                android:id="@+id/server_address"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                android:text="https://192.168.102.112:8080"
-                android:textAlignment="center"
-                android:singleLine="true"
-                android:paddingVertical="15dp"
-                android:paddingHorizontal="40dp"
-                android:scrollbars="horizontal"
-                android:textSize="18dp" />
 
 
     </androidx.cardview.widget.CardView>
@@ -66,6 +65,19 @@
 
 </RelativeLayout>
 
+    <Button
+        android:id="@+id/buttonAudio"
+        android:layout_width="173dp"
+        android:layout_height="wrap_content"
+        android:text="Audio" />
+
+    <EditText
+        android:id="@+id/direccion_ip"
+        android:layout_width="257dp"
+        android:layout_height="wrap_content"
+        android:ems="10"
+        android:inputType="text"
+        android:text="192.168.102.112" />
 
 
 </LinearLayout>
