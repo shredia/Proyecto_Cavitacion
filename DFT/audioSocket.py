@@ -3,16 +3,18 @@ import pyaudio
 import numpy as np
 import pandas as pd
 from keras.models import load_model
-import matplotlib.pyplot as plt
-from matplotlib import style
+import matplotlib.pyplot as plt 
+from matplotlib import style 
 
-nWindow = 2**10
-modelo = load_model('cavitacion.h5') 
+nWindow = 2**12
+modelo = load_model('cavitacion.h5', compile=False)
+
 modelo.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
 
-lastvalues = []
-ent_list = []  # Lista para guardar los vectores de "ent"
-hanning_window = np.hanning(nWindow)
+
+lastvalues=[]
+accumulated_data = np.array([], dtype=np.float32)
+
 
 ### Configuración del gráfico con subplots
 style.use('fivethirtyeight')
@@ -22,8 +24,8 @@ fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))  # Crear dos subplots
 # ax2: Gráfico de la FFT en tiempo real
 
 label_mapping = {
-    0: 'chill de cojones',
-    1: 'CAVITACION CTM CORRE!!'
+    0: 'Cavitaciont',
+    1: 'CAVITACION'
 }
 y_values = [0, 1]
 y_labels = [label_mapping[value] for value in y_values]
@@ -55,11 +57,12 @@ sock.bind((UDP_IP, UDP_PORT))
 print(f"Escuchando en {UDP_IP}:{UDP_PORT}...")
 
 def procesarData(audio_data):
-    global ent_list
-
     ffts = np.fft.fft(audio_data)
     fft_magnitude = np.abs(ffts[:len(ffts)//2])  
     fft_magnitude = fft_magnitude / np.max(fft_magnitude)
+
+    # Calcular frecuencias correspondientes a los bins
+    freqs = np.fft.fftfreq(len(audio_data), d=1/RATE)[:len(ffts)//2]
 
     # Reordenar datos para pasarlos como entradas
     rows = []
@@ -67,16 +70,15 @@ def procesarData(audio_data):
         rows.append(abs(ffts[i]))  
     ent = np.reshape(rows, (1, -1))
 
-    # Guardar el vector "ent"
-    ent_list.append(ent.flatten())  # Aplanar para guardar como una fila en el CSV
-
     # Usar modelo para predecir el resultado
     resultado = modelo.predict(ent, verbose=0).astype(float)
+
     lastvalues.append(resultado)
 
-    # Cuando se superan los 10 valores, se elimina el último valor y se realiza el gráfico de la data 
+    # Cuando se superan los 10 valores, se elimina el último valor y se grafica
     if len(lastvalues) > 10:
         lastvalues.pop(0)  # Eliminar dato #11
+
         # Graficar resultados del modelo (ax1)
         ax1.clear()
         ax22 = np.reshape(lastvalues, (10, -1))
@@ -89,14 +91,13 @@ def procesarData(audio_data):
 
         # Graficar FFT en tiempo real (ax2)
         ax2.clear()
-        ax2.plot(fft_magnitude)
+        ax2.plot(freqs, fft_magnitude)  # Usar frecuencias en lugar de bins
         ax2.set_title('FFT en Tiempo Real')
         ax2.set_ylabel('Magnitud')
-        ax2.set_xlabel('Frecuencia (bin)')
-        ax2.set_xlim([0, len(fft_magnitude)])  # Ajustar el eje X según la longitud de la FFT
+        ax2.set_xlabel('Frecuencia (Hz)')
+        ax2.set_xlim([0, RATE / 2])  # Limitar el eje X a la mitad de la frecuencia de muestreo
 
-        plt.pause(0.0001)  # Sin el pause no grafica!
-
+        plt.pause(0.0000000001)  # Sin el pause no grafica
 
 try:
     while True:
@@ -105,24 +106,27 @@ try:
         
         # Convertir los datos de bytes a un arreglo de números
         audio_data = np.frombuffer(data, dtype=np.int16)
-        audio_data = audio_data.astype(np.float32) / 32768.0
+        audio_data = audio_data.astype(np.float32)
+        accumulated_data = np.append(accumulated_data, audio_data)
 
-        # Normalizar datos  
-        audio_data = audio_data[:nWindow]
+        #normalizar ventana para evitar que las DNN aprendan por la intensidad del sonido
+        accumulated_data = accumulated_data / np.max(np.abs(accumulated_data))
 
-        # Procesar el audio_data aquí
-        procesarData(audio_data)
-        
-        # Reproducir el audio
-        stream.write(data)
+        if len(accumulated_data) >= nWindow:
+            audio_data = accumulated_data[:nWindow]
+            
+            procesarData(audio_data)
+            
+            # Reproducir el audio
+            #stream.write(data)
+
+            #limpiar buffer
+            accumulated_data = np.array([], dtype=np.float32)
+            
+
 except KeyboardInterrupt:
     print("\nCerrando la escucha...")
 finally:
-    # Guardar los vectores "ent" en un archivo CSV
-    ent_df = pd.DataFrame(ent_list)
-    ent_df.to_csv('datos_audio_no_cavitacion.csv', index=False,header=None)
-    print("Vectores 'ent' guardados en 'ent_vectors.csv'.")
-
     # Liberar recursos
     stream.stop_stream()
     stream.close()
